@@ -1,0 +1,819 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aplicação TBL - Supervisão Pedagógica EAD</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Escola Atlântico Avanti Inspired Palette */
+        :root {
+            --primary: #0056b3; /* Deep Blue */
+            --primary-hover: #004085;
+            --success: #28a745;
+            --danger: #dc3545;
+            --background: #f8f9fa; /* Light grey background */
+            --surface: #ffffff;
+            --text: #212529; /* Dark grey text */
+            --text-light: #6c757d; /* Medium grey text */
+            --border: #dee2e6; /* Light border */
+            --accent: #ffc107; /* Amber for highlights if needed */
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; } 
+        body { background-color: var(--background); color: var(--text); padding: 20px; line-height: 1.6; }
+        .container { max-width: 900px; margin: 0 auto; background: var(--surface); padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px -2px rgba(0,0,0,0.1); }
+
+        header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid var(--border); padding-bottom: 20px; }
+        h1 { color: var(--primary); margin-bottom: 10px; font-size: 2.2rem; }
+        h2 { color: var(--primary); margin-bottom: 15px; font-size: 1.6rem; }
+        h3 { color: var(--primary); margin-bottom: 10px; font-size: 1.3rem; }
+
+        /* Abas de Navegação */
+        .tabs { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 30px; overflow-x: auto; padding-bottom: 5px; border-bottom: 1px solid var(--border); }
+        .tab { padding: 10px 20px; background: var(--border); border: none; border-radius: 6px 6px 0 0; cursor: pointer; font-weight: 600; color: var(--text-light); transition: all 0.3s ease; white-space: nowrap; border-bottom: 3px solid transparent; }
+        .tab.active { background: var(--surface); color: var(--primary); border-bottom: 3px solid var(--primary); }
+        .tab:hover:not(.active) { background: #e9ecef; color: var(--text); }
+        .tab:disabled { opacity: 0.6; cursor: not-allowed; background: #e0e0e0; color: #a0a0a0; }
+
+        /* Conteúdo das Fases */
+        .phase-panel { display: none; padding-top: 20px; }
+        .phase-panel.active { display: block; }
+
+        /* Disparador & General Boxes */
+        .box { background: #e6f2ff; /* Light primary background */ padding: 20px; border-left: 5px solid var(--primary); border-radius: 6px; margin-bottom: 20px; }
+        .links-box { margin: 20px 0; }
+        .links-box a { display: block; margin-bottom: 10px; color: var(--primary); font-weight: 600; text-decoration: none; transition: color 0.2s; }
+        .links-box a:hover { text-decoration: underline; color: var(--primary-hover); }
+
+        /* Questões */
+        .question-card { margin-bottom: 30px; padding: 20px; border: 1px solid var(--border); border-radius: 8px; background: #fafafa; }
+        .question-title { font-weight: 700; margin-bottom: 15px; color: var(--text); font-size: 1.1rem; }
+        .options { display: flex; flex-direction: column; gap: 10px; }
+        .option-label { display: flex; align-items: flex-start; gap: 10px; padding: 12px; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; background: white; transition: background 0.2s, border-color 0.2s; }
+        .option-label:hover { background: #f1f5f9; border-color: var(--primary); }
+        .option-label input[type="radio"] { margin-top: 4px; transform: scale(1.2); accent-color: var(--primary); }
+
+        /* Estilos de feedback do tRAT (Grupo) */
+        .option-label.correct { background: #dcfce7 !important; border-color: var(--success) !important; color: #14532d; font-weight: bold; }
+        .option-label.wrong { background: #fee2e2 !important; border-color: var(--danger) !important; color: #7f1d1d; opacity: 0.7; }
+
+        /* Botões */
+        .btn { display: inline-block; padding: 12px 24px; background: var(--primary); color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; transition: background 0.3s; font-size: 1rem; text-align: center; text-decoration: none; }
+        .btn:hover { background: var(--primary-hover); }
+        .btn-success { background: var(--success); }
+        .btn-success:hover { background: #218838; }
+        .btn-danger { background: var(--danger); }
+        .btn-danger:hover { background: #c82333; }
+
+        /* Score Board & Comparison */
+        .score-comparison {
+            background: var(--background);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 25px;
+            margin-bottom: 20px;
+        }
+        .score-comparison h3 { color: var(--primary); margin-bottom: 15px; font-size: 1.3rem; }
+        .score-comparison p { margin-bottom: 8px; font-size: 1.05rem; }
+        .score-comparison strong { color: var(--text); }
+
+        .debrief-list { margin-top: 20px; padding-left: 20px; }
+        .debrief-list li { margin-bottom: 15px; font-size: 1.05rem; }
+
+        textarea {
+            width: calc(100% - 20px);
+            height: 150px;
+            padding: 10px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            margin-top: 15px;
+            font-family: inherit;
+            font-size: 1rem;
+            resize: vertical;
+        }
+
+        .results-section {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: #fdfdfd;
+        }
+        .results-section p strong { color: var(--primary); }
+        .chart-container {
+            position: relative; /* Needed for Chart.js */
+            height: 250px; /* Set a default height for the chart */
+            width: 100%;
+            margin-top: 15px;
+        }
+        .chart-placeholder {
+            background: #e9ecef;
+            border: 1px dashed var(--text-light);
+            min-height: 100px;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            justify-content: center;
+            padding: 15px;
+            color: var(--text-light);
+            margin-top: 10px;
+            border-radius: 4px;
+        }
+        .chart-placeholder p {
+            margin: 5px 0; /* Adjust spacing for text */
+            color: var(--text);
+        }
+
+        /* Styles for Appeals */
+        .appeal-item {
+            list-style: none;
+            margin-bottom: 10px;
+            padding: 10px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: #f9f9f9;
+            transition: background 0.2s;
+        }
+        .appeal-item:hover { background: #f1f5f9; }
+        .appeal-item a {
+            display: block;
+            color: var(--primary);
+            font-weight: 600;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        .appeal-item a:hover { text-decoration: underline; }
+        .appeal-detail {
+            margin-top: 10px;
+            padding-left: 15px;
+            border-left: 3px solid var(--accent);
+            font-style: italic;
+            color: var(--text-light);
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>Sessão TBL: Supervisão Pedagógica no EAD</h1>
+        <p>Desenvolvimento de Prontidão e Tomada de Decisão Crítica</p>
+        <p>Usuário: <span id="user-display-name" style="font-weight: bold; color: var(--success);"></span></p>
+    </header>
+
+    <div class="tabs">
+        <button class="tab active" onclick="switchTab('disparador')">1. Cenário & Disparador</button>
+        <button class="tab" id="tab-irat" onclick="switchTab('irat')">2. iRAT (Individual)</button>
+        <button class="tab" id="tab-trat" onclick="switchTab('trat')">3. tRAT (Equipe)</button>
+        <button class="tab" id="tab-apelo" onclick="switchTab('apelo')">4. Apelo & Negociação</button>
+        <button class="tab" id="tab-resultados" onclick="switchTab('resultados')">5. Resultados</button>
+    </div>
+
+    <div id="disparador" class="phase-panel active">
+        <h2>O Disparador Completo (Foco: EAD e IA)</h2>
+        <div class="box">
+            <p><strong>O Cenário e a Dor da Supervisão</strong></p>
+            <p>O modelo de Ensino a Distância (EAD) focado puramente em escala e na passividade do aluno enfrenta um esgotamento crítico. Com a rápida popularização da Inteligência Artificial Generativa, os estudantes passaram a utilizá-la em massa para responder tarefas de forma automatizada, gerando um "apagão" no pensamento crítico e fraudes difíceis de rastrear.</p>
+            <p>Paralelamente, órgãos reguladores correm para impor limites à automação excessiva na avaliação, exigindo que a tecnologia seja apenas assistente, nunca substituta do docente. O papel da Supervisão Pedagógica no EAD mudou de figura: o desafio urgente é redesenhar as metodologias e os processos de avaliação para combater a evasão em massa e garantir a integridade pedagógica, sem perder a capacidade de atender turmas em larga escala.</p>
+        </div>
+
+        <h3>Reportagens de Apoio (Fotes Reais e Ativas)</h3>
+        <div class="links-box">
+            <a href="https://g1.globo.com/jornal-nacional/noticia/2026/05/19/conselho-nacional-de-educacao-consulta-professores-e-sociedade-civil-sobre-regras-para-uso-da-ia-na-sala-de-aula.ghtml" target="_blank">🔗 Reportagem 1 (Sobre as novas regras e riscos da IA em avaliações): O Conselho Nacional de Educação (CNE) abriu consulta pública sobre o uso de IA na educação e emitiu alertas importantes: o uso da inteligência artificial para correção e monitoramento de provas é classificado como de "alto risco ou risco excessivo", exigindo que a tecnologia nunca substitua a autonomia intelectual e o papel central do professor.</a>
+            <a href="https://revistaensinosuperior.com.br/2025/06/02/ead-evasao-e-busca-de-significado/" target="_blank">🔗 Reportagem 2 (Sobre a crise do modelo tradicional de EAD e a evasão): Aborda o grande gargalo das taxas de evasão no EAD e como o modelo focado na passividade do aluno faliu. Especialistas explicam que, para reter os estudantes hoje, a gestão e a coordenação pedagógica precisam usar a tecnologia para hiperpersonalizar e trazer desafios práticos reais, em vez de tratar todos os alunos de forma massificada.</a>
+        </div>
+        <button class="btn btn-danger" style="margin-top: 20px;" onclick="clearResults()">Limpar Resultados</button>
+    </div>
+
+    <div id="irat" class="phase-panel">
+        <h2>2. iRAT (Individual Readiness Assurance Test)</h2>
+        <div style="margin-bottom: 20px;">
+            <label for="user-input-name" style="font-weight: bold;">Seu Nome:</label>
+            <input type="text" id="user-input-name" placeholder="Digite seu nome para começar o iRAT" required
+                   style="width: 100%; padding: 10px; margin-top: 5px; border: 1px solid var(--border); border-radius: 6px; font-size: 1rem;">
+            <p id="name-input-feedback" style="margin-top: 5px; color: var(--danger); display: none;">Por favor, digite seu nome.</p>
+        </div>
+        <p>Responda às questões individualmente para testar sua compreensão do cenário.</p>
+        <div class="question-card">
+            <p class="question-title">Questão 1: Um supervisor pedagógico de EAD nota que as notas dos fóruns avaliativos subiram drasticamente, mas o tempo médio de permanência dos alunos na plataforma caiu. Ao analisar as postagens, identifica um padrão de escrita polido e genérico, típico de respostas geradas por Inteligência Artificial (IA) generativa. Diante da necessidade de manter a escala do curso, qual é a ação imediata mais adequada para a supervisão?</p>
+            <div class="options">
+                <label class="option-label"><input type="radio" name="q1_irat" value="a"> A. Substituir os fóruns de discussão dissertativos por questionários automatizados de múltipla escolha com correção síncrona.</label>
+                <label class="option-label"><input type="radio" name="q1_irat" value="b"> B. Implementar softwares de detecção de IA para reprovar automaticamente os alunos que utilizarem a ferramenta nos fóruns.</label>
+                <label class="option-label"><input type="radio" name="q1_irat" value="c"> C. Redesenhar as diretrizes dos fóruns, exigindo que os alunos analisem criticamente um estudo de caso local ou apliquem um conceito à sua própria realidade profissional.</label>
+                <label class="option-label"><input type="radio" name="q1_irat" value="d"> D. Ignorar o uso da tecnologia, considerando que o preenchimento dos requisitos formais de postagem é suficiente para a aprovação.</label>
+            </div>
+        </div>
+        <div class="question-card">
+            <p class="question-title">Questão 2: Em uma instituição de Ensino a Distância, os tutores online estão reportando burnout e incapacidade de realizar mediações profundas, pois cada um é responsável por gerenciar salas virtuais com mais de 300 estudantes. Considerando a "plataformização" do trabalho docente, como a supervisão pedagógica deve intervir estrategicamente?</p>
+            <div class="options">
+                <label class="option-label"><input type="radio" name="q2_irat" value="a"> A. Automatizar 100% das respostas dos tutores por meio de chatbots programados, eliminando a necessidade de mediação humana direta nas dúvidas recorrentes.</label>
+                <label class="option-label"><input type="radio" name="q2_irat" value="b"> B. Mapear as principais demandas operacionais dos tutores e propor à gestão o uso de IA para triagem de dúvidas administrativas, liberando tempo de tela para interações pedagógicas qualitativas.</label>
+                <label class="option-label"><input type="radio" name="q2_irat" value="c"> C. Exigir que os tutores aumentem sua jornada de trabalho não remunerada para garantir o atendimento personalizado a todos os estudantes.</label>
+                <label class="option-label"><input type="radio" name="q2_irat" value="d"> D. Reduzir o conteúdo programático do curso para que os alunos demandem menos explicações e dúvidas ao longo do semestre.</label>
+            </div>
+        </div>
+        <div class="question-card">
+            <p class="question-title">Questão 3: O maior desafio metodológico do supervisor no EAD atual é evitar o isolamento do estudante e a consequente evasão. Ao planejar uma formação continuada para os designers instrucionais e professores autores, qual princípio de abordagem deve ser priorizado pela supervisão?</p>
+            <div class="options">
+                <label class="option-label"><input type="radio" name="q3_irat" value="a"> A. Centralidade no autoestudo assíncrono estrito, garantindo que o aluno navegue pela plataforma de forma totalmente independente e isolada.</label>
+                <label class="option-label"><input type="radio" name="q3_irat" value="b"> B. Inserção estratégica de metodologias ativas colaborativas síncronas ou assíncronas, promovendo a coaprendizagem e o senso de comunidade.</label>
+                <label class="option-label"><input type="radio" name="q3_irat" value="c"> C. Aumento do volume de leituras obrigatórias e videoaulas expositivas longas para simular o rigor do ambiente presencial.</label>
+                <label class="option-label"><input type="radio" name="q3_irat" value="d"> D. Foco exclusivo na interface visual do Ambiente Virtual de Aprendizagem (AVA), partindo do pressuposto de que o design gráfico dita o engajamento.</label>
+            </div>
+        </div>
+        <div class="question-card">
+            <p class="question-title">Questão 4: Para mitigar fraudes acadêmicas causadas pelo uso desonesto de IAs generativas em avaliações de cursos virtuais de larga escala, a supervisão decide reformular o sistema de avaliação. Qual proposta de avaliação atende melhor aos critérios de integridade acadêmica e viabilidade em larga escala no EAD?</p>
+            <div class="options">
+                <label class="option-label"><input type="radio" name="q4_irat" value="a"> A. Avaliações baseadas em portfólios reflexivos contínuos e autoavaliações integradas ao longo do processo, combinadas com auditorias amostrais em vídeo por parte dos tutores.</label>
+                <label class="option-label"><input type="radio" name="q4_irat" value="b"> B. Retornar obrigatoriamente todos os alunos aos polos presenciais para a realização de provas com papel e caneta uma vez por semana.</label>
+                <label class="option-label"><input type="radio" name="q4_irat" value="c"> C. Utilizar sistemas invasivos de proctoring (monitoramento de câmera e teclado por IA) durante exames de memorização teórica de 4 horas.</label>
+                <label class="option-label"><input type="radio" name="q4_irat" value="d"> D. Extinguir qualquer tipo de avaliação do curso, baseando a aprovação do estudante apenas no clique e na visualização das páginas de conteúdo.</label>
+            </div>
+        </div>
+        <button class="btn" style="margin-top: 15px;" onclick="submitIrat()">Submeter Respostas Individuais</button>
+        <p id="irat-feedback" style="margin-top: 10px;"></p>
+    </div>
+
+    <div id="trat" class="phase-panel">
+        <h2>3. tRAT (Team Readiness Assurance Test)</h2>
+        <div style="margin-bottom: 20px;">
+            <label for="team-input-name" style="font-weight: bold;">Nome da Sua Equipe:</label>
+            <input type="text" id="team-input-name" placeholder="Digite o nome da sua equipe" required
+                   style="width: 100%; padding: 10px; margin-top: 5px; border: 1px solid var(--border); border-radius: 6px; font-size: 1rem;">
+            <p id="team-name-input-feedback" style="margin-top: 5px; color: var(--danger); display: none;">Por favor, digite o nome da sua equipe.</p>
+        </div>
+        <p>Nome da Equipe: <span id="team-flora-name" style="font-weight: bold; color: var(--primary);"></span></p>
+        <p>Discuta as questões com sua equipe, cheguem a um consenso e submetam as respostas do grupo.</p>
+        <div class="question-card">
+            <p class="question-title">Questão 1 (Equipe): Um supervisor pedagógico de EAD nota que as notas dos fóruns avaliativos subiram drasticamente, mas o tempo médio de permanência dos alunos na plataforma caiu. Ao analisar as postagens, identifica um padrão de escrita polido e genérico, típico de respostas geradas por Inteligência Artificial (IA) generativa. Diante da necessidade de manter a escala do curso, qual é a ação imediata mais adequada para a supervisão?</p>
+            <div class="options">
+                <label class="option-label"><input type="radio" name="q1_trat" value="a"> A. Substituir os fóruns de discussão dissertativos por questionários automatizados de múltipla escolha com correção síncrona.</label>
+                <label class="option-label"><input type="radio" name="q1_trat" value="b"> B. Implementar softwares de detecção de IA para reprovar automaticamente os alunos que utilizarem a ferramenta nos fóruns.</label>
+                <label class="option-label"><input type="radio" name="q1_trat" value="c"> C. Redesenhar as diretrizes dos fóruns, exigindo que os alunos analisem criticamente um estudo de caso local ou apliquem um conceito à sua própria realidade profissional.</label>
+                <label class="option-label"><input type="radio" name="q1_trat" value="d"> D. Ignorar o uso da tecnologia, considerando que o preenchimento dos requisitos formais de postagem é suficiente para a aprovação.</label>
+            </div>
+        </div>
+        <div class="question-card">
+            <p class="question-title">Questão 2 (Equipe): Em uma instituição de Ensino a Distância, os tutores online estão reportando burnout e incapacidade de realizar mediações profundas, pois cada um é responsável por gerenciar salas virtuais com mais de 300 estudantes. Considerando a "plataformização" do trabalho docente, como a supervisão pedagógica deve intervir estrategicamente?</p>
+            <div class="options">
+                <label class="option-label"><input type="radio" name="q2_trat" value="a"> A. Automatizar 100% das respostas dos tutores por meio de chatbots programados, eliminando a necessidade de mediação humana direta nas dúvidas recorrentes.</label>
+                <label class="option-label"><input type="radio" name="q2_trat" value="b"> B. Mapear as principais demandas operacionais dos tutores e propor à gestão o uso de IA para triagem de dúvidas administrativas, liberando tempo de tela para interações pedagógicas qualitativas.</label>
+                <label class="option-label"><input type="radio" name="q2_trat" value="c"> C. Exigir que os tutores aumentem sua jornada de trabalho não remunerada para garantir o atendimento personalizado a todos os estudantes.</label>
+                <label class="option-label"><input type="radio" name="q2_trat" value="d"> D. Reduzir o conteúdo programático do curso para que os alunos demandem menos explicações e dúvidas ao longo do semestre.</label>
+            </div>
+        </div>
+        <div class="question-card">
+            <p class="question-title">Questão 3 (Equipe): O maior desafio metodológico do supervisor no EAD atual é evitar o isolamento do estudante e a consequente evasão. Ao planejar uma formação continuada para os designers instrucionais e professores autores, qual princípio de abordagem deve ser priorizado pela supervisão?</p>
+            <div class="options">
+                <label class="option-label"><input type="radio" name="q3_trat" value="a"> A. Centralidade no autoestudo assíncrono estrito, garantindo que o aluno navegue pela plataforma de forma totalmente independente e isolada.</label>
+                <label class="option-label"><input type="radio" name="q3_trat" value="b"> B. Inserção estratégica de metodologias ativas colaborativas síncronas ou assíncronas, promovendo a coaprendizagem e o senso de comunidade.</label>
+                <label class="option-label"><input type="radio" name="q3_trat" value="c"> C. Aumento do volume de leituras obrigatórias e videoaulas expositivas longas para simular o rigor do ambiente presencial.</label>
+                <label class="option-label"><input type="radio" name="q3_trat" value="d"> D. Foco exclusivo na interface visual do Ambiente Virtual de Aprendizagem (AVA), partindo do pressuposto de que o design gráfico dita o engajamento.</label>
+            </div>
+        </div>
+        <div class="question-card">
+            <p class="question-title">Questão 4 (Equipe): Para mitigar fraudes acadêmicas causadas pelo uso desonesto de IAs generativas em avaliações de cursos virtuais de larga escala, a supervisão decide reformular o sistema de avaliação. Qual proposta de avaliação atende melhor aos critérios de integridade acadêmica e viabilidade em larga escala no EAD?</p>
+            <div class="options">
+                <label class="option-label"><input type="radio" name="q4_trat" value="a"> A. Avaliações baseadas em portfólios reflexivos contínuos e autoavaliações integradas ao longo do processo, combinadas com auditorias amostrais em vídeo por parte dos tutores.</label>
+                <label class="option-label"><input type="radio" name="q4_trat" value="b"> B. Retornar obrigatoriamente todos os alunos aos polos presenciais para a realização de provas com papel e caneta uma vez por semana.</label>
+                <label class="option-label"><input type="radio" name="q4_trat" value="c"> C. Utilizar sistemas invasivos de proctoring (monitoramento de câmera e teclado por IA) durante exames de memorização teórica de 4 horas.</label>
+                <label class="option-label"><input type="radio" name="q4_trat" value="d"> D. Extinguir qualquer tipo de avaliação do curso, baseando a aprovação do estudante apenas no clique e na visualização das páginas de conteúdo.</label>
+            </div>
+        </div>
+
+        <div class="score-comparison">
+            <h3>Análise da Evolução da Discussão</h3>
+            <p><strong>Sua escolha Q1:</strong> <span id="individual-q1-choice">Nenhuma</span></p>
+            <p><strong>Equipe escolha Q1:</strong> <span id="team-q1-choice">Nenhuma</span></p>
+            <p><strong>Sua escolha Q2:</strong> <span id="individual-q2-choice">Nenhuma</span></p>
+            <p><strong>Equipe escolha Q2:</strong> <span id="team-q2-choice">Nenhuma</span></p>
+            <p><strong>Sua escolha Q3:</strong> <span id="individual-q3-choice">Nenhuma</span></p>
+            <p><strong>Equipe escolha Q3:</strong> <span id="team-q3-choice">Nenhuma</span></p>
+            <p><strong>Sua escolha Q4:</strong> <span id="individual-q4-choice">Nenhuma</span></p>
+            <p><strong>Equipe escolha Q4:</strong> <span id="team-q4-choice">Nenhuma</span></p>
+            <p id="negotiation-summary">Submeta as respostas para ver a comparação de negociação.</p>
+        </div>
+        <button class="btn btn-success" onclick="submitTrat()">Submeter Respostas do Grupo</button>
+        <p id="trat-feedback" style="margin-top: 10px;"></p>
+    </div>
+
+    <div id="apelo" class="phase-panel">
+        <h2>4. Apelo & Negociação</h2>
+        <p>Se sua equipe discorda de alguma resposta, você pode apresentar um apelo aqui, justificando a escolha da equipe com base nas fundamentações e reportagens de apoio.</p>
+        <textarea id="appeal-text" placeholder="Escreva seu apelo e a justificativa aqui..."></textarea>
+        <button class="btn btn-primary" style="margin-top: 15px;" onclick="submitAppeal()">Enviar Apelo</button>
+        <p id="appeal-feedback" style="margin-top: 10px;"></p>
+    </div>
+
+    <div id="resultados" class="phase-panel">
+        <h2>5. Resultados Globais da Sessão</h2>
+        <div class="results-section">
+            <h3>Suas Respostas Individuais (<span id="individual-results-name"></span>)</h3>
+            <div class="chart-container">
+                <canvas id="individualChoicesChart"></canvas>
+            </div>
+            <div id="individual-choices-text-summary" class="chart-placeholder">
+                <p>Aguardando submissão do iRAT para mostrar suas escolhas individuais.</p>
+            </div>
+        </div>
+        <div class="results-section">
+            <h3>Respostas da Equipe (<span id="team-results-name"></span>)</h3>
+            <div class="chart-container">
+                <canvas id="teamChoicesChart"></canvas>
+            </div>
+            <div id="team-choices-text-summary" class="chart-placeholder">
+                <p>Aguardando submissão do tRAT para mostrar as escolhas da equipe.</p>
+            </div>
+        </div>
+        <div class="results-section">
+            <h3>Análise de Mudança e Negociação (Individual vs. Equipe)</h3>
+            <div id="negotiation-analysis" class="chart-placeholder">
+                <p>Aguardando submissão de iRAT e tRAT para análise completa da negociação.</p>
+            </div>
+        </div>
+
+        <div class="results-section">
+            <h3>Apelos Recebidos</h3>
+            <ul id="appeals-list" style="padding-left: 0;">
+                <!-- Apelos serão carregados aqui -->
+            </ul>
+        </div>
+    </div>
+</div>
+
+<script>
+    const brazilianFlora = [
+        "Ipê-amarelo", "Vitória-régia", "Buriti", "Embaúba", "Orquídea",
+        "Bromélia", "Manacá", "Carnaúba", "Jatobá", "Pau-brasil",
+        "Seringueira", "Açaí", "Cacau", "Araucária", "Samambaia",
+        "Flamboyant", "Mandacaru", "Quaresmeira", "Palmeira-imperial", "Cajueiro"
+    ];
+
+    let userName = sessionStorage.getItem('userName') || '';
+    let individualAnswers = JSON.parse(sessionStorage.getItem('individualAnswers')) || {};
+    let teamAnswers = JSON.parse(sessionStorage.getItem('teamAnswers')) || {};
+    let teamFloraName = sessionStorage.getItem('teamFloraName') || '';
+    let allAppeals = JSON.parse(sessionStorage.getItem('allAppeals')) || [];
+
+    let individualChartInstance = null;
+    let teamChartInstance = null;
+
+    function getRandomFloraName() {
+        return brazilianFlora[Math.floor(Math.random() * brazilianFlora.length)];
+    }
+
+    function initializeState() {
+        // Set user name
+        if (userName) {
+            document.getElementById('user-input-name').value = userName;
+            document.getElementById('user-display-name').innerText = userName;
+        } else {
+            document.getElementById('user-input-name').value = ''; // Clear input if no name
+            document.getElementById('user-display-name').innerText = 'Visitante';
+        }
+
+        // Set team name
+        // The input field for team name is now in tRAT, so we only update the display span here if a name exists
+        if (teamFloraName) {
+            // document.getElementById('team-input-name').value = teamFloraName; // This input is not in iRAT anymore
+            document.getElementById('team-flora-name').innerText = teamFloraName;
+        } else {
+            // document.getElementById('team-input-name').value = ''; // This input is not in iRAT anymore
+            document.getElementById('team-flora-name').innerText = 'Nenhuma equipe definida';
+        }
+
+        // Clear feedback messages
+        document.getElementById('irat-feedback').innerText = '';
+        document.getElementById('irat-feedback').style.color = 'var(--text)';
+        document.getElementById('trat-feedback').innerText = '';
+        document.getElementById('trat-feedback').style.color = 'var(--text)';
+        document.getElementById('appeal-feedback').innerText = '';
+        document.getElementById('appeal-feedback').style.color = 'var(--text)';
+        document.getElementById('name-input-feedback').style.display = 'none';
+        document.getElementById('team-name-input-feedback').style.display = 'none';
+
+        // Update results tab if data already exists
+        updateResultsTab();
+        renderAppealsList();
+        updateNegotiationSummary(); // Ensure negotiation summary is also updated after initialization
+    }
+
+    // Removed saveTeamName as team name is no longer editable directly in tRAT tab
+
+    function switchTab(tabId) {
+        document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+        document.querySelectorAll('.phase-panel').forEach(panel => panel.classList.remove('active'));
+        document.querySelector(`.tabs button[onclick*='${tabId}']`).classList.add('active');
+        document.getElementById(tabId).classList.add('active');
+
+        if (tabId === 'resultados') {
+            updateResultsTab();
+            renderAppealsList();
+        } else if (tabId === 'trat') {
+             // Update the team name input field and display in tRAT tab when switching to it
+            if (teamFloraName) {
+                document.getElementById('team-input-name').value = teamFloraName;
+                document.getElementById('team-flora-name').innerText = teamFloraName;
+            } else {
+                document.getElementById('team-input-name').value = ''; // Ensure it's clear if no name saved yet
+                document.getElementById('team-flora-name').innerText = 'Nenhuma equipe definida';
+            }
+        }
+    }
+
+    function submitIrat() {
+        const userInputName = document.getElementById('user-input-name').value.trim();
+        const nameInputFeedback = document.getElementById('name-input-feedback');
+
+        let isValid = true;
+
+        if (!userInputName) {
+            nameInputFeedback.style.display = 'block';
+            isValid = false;
+        } else {
+            nameInputFeedback.style.display = 'none';
+        }
+
+        if (!isValid) {
+            document.getElementById('irat-feedback').innerText = 'Por favor, preencha seu nome antes de submeter.';
+            document.getElementById('irat-feedback').style.color = 'var(--danger)';
+            return;
+        }
+
+        userName = userInputName;
+        sessionStorage.setItem('userName', userName);
+        document.getElementById('user-display-name').innerText = userName;
+
+        let currentIndividualAnswers = {};
+        const q1Answer = document.querySelector('input[name="q1_irat"]:checked');
+        const q2Answer = document.querySelector('input[name="q2_irat"]:checked');
+        const q3Answer = document.querySelector('input[name="q3_irat"]:checked');
+        const q4Answer = document.querySelector('input[name="q4_irat"]:checked');
+
+        if (!q1Answer || !q2Answer || !q3Answer || !q4Answer) {
+            document.getElementById('irat-feedback').innerText = 'Por favor, responda todas as questões individuais.';
+            document.getElementById('irat-feedback').style.color = 'var(--danger)';
+            return;
+        }
+
+        currentIndividualAnswers.q1 = q1Answer.value;
+        currentIndividualAnswers.q2 = q2Answer.value;
+        currentIndividualAnswers.q3 = q3Answer.value;
+        currentIndividualAnswers.q4 = q4Answer.value;
+        individualAnswers = currentIndividualAnswers; // Update global state
+        sessionStorage.setItem('individualAnswers', JSON.stringify(individualAnswers));
+
+        document.getElementById('irat-feedback').innerText = 'Suas respostas individuais foram submetidas!';
+        document.getElementById('irat-feedback').style.color = 'var(--success)';
+
+        // Update tRAT comparison section with individual choices
+        document.getElementById('individual-q1-choice').innerText = individualAnswers.q1.toUpperCase();
+        document.getElementById('individual-q2-choice').innerText = individualAnswers.q2.toUpperCase();
+        document.getElementById('individual-q3-choice').innerText = individualAnswers.q3.toUpperCase();
+        document.getElementById('individual-q4-choice').innerText = individualAnswers.q4.toUpperCase();
+        updateNegotiationSummary(); // Update summary after iRAT submission
+    }
+
+    function submitTrat() {
+        const teamInputName = document.getElementById('team-input-name').value.trim();
+        const teamNameInputFeedback = document.getElementById('team-name-input-feedback');
+
+        let isValid = true;
+
+        if (!teamInputName) {
+            teamNameInputFeedback.style.display = 'block';
+            isValid = false;
+        } else {
+            teamNameInputFeedback.style.display = 'none';
+        }
+
+        if (!isValid) {
+            document.getElementById('trat-feedback').innerText = 'Por favor, preencha o nome da sua equipe antes de submeter.';
+            document.getElementById('trat-feedback').style.color = 'var(--danger)';
+            return;
+        }
+
+        teamFloraName = teamInputName; // Use the user-provided team name
+        sessionStorage.setItem('teamFloraName', teamFloraName);
+        document.getElementById('team-flora-name').innerText = teamFloraName; // Update display in tRAT
+
+        let currentTeamAnswers = {};
+        const q1Answer = document.querySelector('input[name="q1_trat"]:checked');
+        const q2Answer = document.querySelector('input[name="q2_trat"]:checked');
+        const q3Answer = document.querySelector('input[name="q3_trat"]:checked');
+        const q4Answer = document.querySelector('input[name="q4_trat"]:checked');
+
+        if (!q1Answer || !q2Answer || !q3Answer || !q4Answer) {
+            document.getElementById('trat-feedback').innerText = 'Por favor, responda todas as questões da equipe.';
+            document.getElementById('trat-feedback').style.color = 'var(--danger)';
+            return;
+        }
+
+        currentTeamAnswers.q1 = q1Answer.value;
+        currentTeamAnswers.q2 = q2Answer.value;
+        currentTeamAnswers.q3 = q3Answer.value;
+        currentTeamAnswers.q4 = q4Answer.value;
+        teamAnswers = currentTeamAnswers; // Update global state
+        sessionStorage.setItem('teamAnswers', JSON.stringify(teamAnswers));
+
+        document.getElementById('trat-feedback').innerText = 'As respostas da equipe foram submetidas!';
+        document.getElementById('trat-feedback').style.color = 'var(--success)';
+
+        // Update tRAT comparison section with team choices
+        document.getElementById('team-q1-choice').innerText = teamAnswers.q1.toUpperCase();
+        document.getElementById('team-q2-choice').innerText = teamAnswers.q2.toUpperCase();
+        document.getElementById('team-q3-choice').innerText = teamAnswers.q3.toUpperCase();
+        document.getElementById('team-q4-choice').innerText = teamAnswers.q4.toUpperCase();
+        updateNegotiationSummary();
+    }
+
+    function updateNegotiationSummary() {
+        const summaryElement = document.getElementById('negotiation-summary');
+        if (Object.keys(individualAnswers).length > 0 && Object.keys(teamAnswers).length > 0) {
+            let summaryText = 'Análise Preliminar: '; 
+            let hasChanged = false;
+
+            if (individualAnswers.q1 !== teamAnswers.q1) {
+                summaryText += 'Houve mudança na Questão 1. '; 
+                hasChanged = true;
+            }
+            if (individualAnswers.q2 !== teamAnswers.q2) {
+                summaryText += 'Houve mudança na Questão 2. '; 
+                hasChanged = true;
+            }
+            if (individualAnswers.q3 !== teamAnswers.q3) {
+                summaryText += 'Houve mudança na Questão 3. '; 
+                hasChanged = true;
+            }
+            if (individualAnswers.q4 !== teamAnswers.q4) {
+                summaryText += 'Houve mudança na Questão 4. '; 
+                hasChanged = true;
+            }
+
+            if (!hasChanged) {
+                summaryText += 'As escolhas da equipe foram consistentes com as individuais.';
+                summaryElement.style.color = 'var(--text-light)';
+            } else {
+                summaryText += 'Indicando negociação entre individual e grupo!';
+                summaryElement.style.color = 'var(--primary)';
+            }
+            summaryElement.innerText = summaryText;
+        } else {
+            summaryElement.innerText = 'Submeta as respostas para ver a comparação de negociação.';
+            summaryElement.style.color = 'var(--text)';
+        }
+    }
+
+    function submitAppeal() {
+        const appealTextarea = document.getElementById('appeal-text');
+        const appealContent = appealTextarea.value.trim();
+        const appealFeedback = document.getElementById('appeal-feedback');
+
+        if (appealContent) {
+            const appealId = allAppeals.length + 1;
+            allAppeals.push({ id: appealId, text: appealContent });
+            sessionStorage.setItem('allAppeals', JSON.stringify(allAppeals));
+            appealTextarea.value = '';
+            appealFeedback.innerText = 'Apelo enviado com sucesso!';
+            appealFeedback.style.color = 'var(--success)';
+            renderAppealsList(); // Update the list in results tab immediately
+        } else {
+            appealFeedback.innerText = 'Por favor, escreva seu apelo antes de enviar.';
+            appealFeedback.style.color = 'var(--danger)';
+        }
+    }
+
+    function renderAppealsList() {
+        const appealsList = document.getElementById('appeals-list');
+        appealsList.innerHTML = ''; // Clear existing list items
+
+        if (allAppeals.length === 0) {
+            const noAppealsItem = document.createElement('li');
+            noAppealsItem.id = 'no-appeals-message';
+            noAppealsItem.style.display = 'block';
+            noAppealsItem.textContent = 'Nenhum apelo submetido ainda.';
+            appealsList.appendChild(noAppealsItem);
+        } else {
+            allAppeals.forEach(appeal => {
+                const listItem = document.createElement('li');
+                listItem.classList.add('appeal-item');
+                listItem.innerHTML = `
+                    <a href="#" onclick="toggleAppealDetail(event, 'appeal-detail-${appeal.id}')">Apelo #${appeal.id}</a>
+                    <div id="appeal-detail-${appeal.id}" class="appeal-detail" style="display:none;">
+                        <p>${appeal.text.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</p>
+                    </div>
+                `;
+                appealsList.appendChild(listItem);
+            });
+        }
+    }
+
+    function toggleAppealDetail(event, detailId) {
+        event.preventDefault(); // Prevent default anchor link behavior
+        const detailElement = document.getElementById(detailId);
+        if (detailElement.style.display === 'none') {
+            detailElement.style.display = 'block';
+        } else {
+            detailElement.style.display = 'none';
+        }
+    }
+
+    // Helper function to render a bar chart
+    function renderBarChart(canvasId, title, labels, data, backgroundColor, borderColor) {
+        const ctx = document.getElementById(canvasId);
+        if (!ctx) return; // Exit if canvas not found
+
+        // Destroy existing chart instance if it exists
+        let chartInstance = Chart.getChart(canvasId);
+        if (chartInstance) {
+            chartInstance.destroy();
+        }
+
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Escolha',
+                    data: data,
+                    backgroundColor: backgroundColor,
+                    borderColor: borderColor,
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: title
+                    },
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 4, // Assuming choices are A, B, C, D (1-4)
+                        ticks: {
+                            stepSize: 1,
+                            callback: function(value, index, ticks) {
+                                // Map numerical value back to letter (1=A, 2=B, etc.)
+                                if (value >= 1 && value <= 4) {
+                                    return String.fromCharCode(64 + value);
+                                }
+                                return value;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    function updateResultsTab() {
+        const individualChoicesTextSummary = document.getElementById('individual-choices-text-summary');
+        const teamChoicesTextSummary = document.getElementById('team-choices-text-summary');
+        const negotiationAnalysis = document.getElementById('negotiation-analysis');
+
+        // Update names in results section headings
+        document.getElementById('individual-results-name').innerText = userName ? `(${userName})` : '';
+        document.getElementById('team-results-name').innerText = teamFloraName ? `(${teamFloraName})` : '';
+
+        // Individual Choices Chart and Text Summary
+        if (Object.keys(individualAnswers).length === 0) {
+            individualChoicesTextSummary.style.display = 'block';
+            individualChoicesTextSummary.innerHTML = '<p>Aguardando submissão do iRAT para mostrar suas escolhas individuais.</p>';
+            // Destroy chart if no data
+            if (individualChartInstance) {
+                individualChartInstance.destroy();
+                individualChartInstance = null;
+            }
+        } else {
+            individualChoicesTextSummary.style.display = 'none';
+            const labels = Object.keys(individualAnswers).map(q => `Questão ${q.substring(1).toUpperCase()}`);
+            const data = Object.values(individualAnswers).map(answer => answer.toUpperCase().charCodeAt(0) - 'A'.charCodeAt(0) + 1); // Map A=1, B=2, etc.
+            individualChartInstance = renderBarChart('individualChoicesChart', 'Suas Escolhas Individuais', labels, data, 'rgba(0, 86, 179, 0.6)', 'rgba(0, 86, 179, 1)');
+        }
+
+        // Team Choices Chart and Text Summary
+        if (Object.keys(teamAnswers).length === 0) {
+            teamChoicesTextSummary.style.display = 'block';
+            teamChoicesTextSummary.innerHTML = '<p>Aguardando submissão do tRAT para mostrar as escolhas da equipe.</p>';
+            // Destroy chart if no data
+            if (teamChartInstance) {
+                teamChartInstance.destroy();
+                teamChartInstance = null;
+            }
+        } else {
+            teamChoicesTextSummary.style.display = 'none';
+            const labels = Object.keys(teamAnswers).map(q => `Questão ${q.substring(1).toUpperCase()}`);
+            const data = Object.values(teamAnswers).map(answer => answer.toUpperCase().charCodeAt(0) - 'A'.charCodeAt(0) + 1); // Map A=1, B=2, etc.
+            teamChartInstance = renderBarChart('teamChoicesChart', 'Escolhas da Equipe', labels, data, 'rgba(40, 167, 69, 0.6)', 'rgba(40, 167, 69, 1)');
+        }
+
+        if (Object.keys(individualAnswers).length > 0 && Object.keys(teamAnswers).length > 0) {
+            let analysisHtml = '<h4>Análise Detalhada:</h4>';
+            for (const qKey in individualAnswers) {
+                const individualChoice = individualAnswers[qKey];
+                const teamChoice = teamAnswers[qKey];
+
+                analysisHtml += `<p><strong>${qKey.toUpperCase()} (Questão ${qKey.substring(1)}):</strong></p>`;
+                analysisHtml += `<p>&nbsp;&nbsp;&nbsp;&nbsp; -> Escolha Individual: ${individualChoice.toUpperCase()}</p>`;
+                analysisHtml += `<p>&nbsp;&nbsp;&nbsp;&nbsp; -> Escolha da Equipe: ${teamChoice ? teamChoice.toUpperCase() : 'N/A (Equipe não respondeu)'}</p>`;
+
+                if (teamChoice) {
+                    if (individualChoice === teamChoice) {
+                        analysisHtml += `<p style="color: var(--text-light);"> &nbsp;&nbsp;&nbsp;&nbsp; -> Consistência: A escolha do indivíduo foi mantida no grupo.</p>`;
+                    } else {
+                        analysisHtml += `<p style="color: var(--primary);"> &nbsp;&nbsp;&nbsp;&nbsp; -> Mudança e Negociação: A escolha do indivíduo mudou na discussão em grupo.</p>`;
+                    }
+                }
+            }
+            negotiationAnalysis.innerHTML = analysisHtml;
+        } else {
+            negotiationAnalysis.innerHTML = '<p>Aguardando submissão de iRAT e tRAT para análise completa da negociação.</p>';
+        }
+        renderAppealsList();
+    }
+
+    function clearResults() {
+        // Clear session storage
+        sessionStorage.removeItem('userName');
+        sessionStorage.removeItem('individualAnswers');
+        sessionStorage.removeItem('teamAnswers');
+        sessionStorage.removeItem('teamFloraName');
+        sessionStorage.removeItem('allAppeals');
+
+        // Reset global variables
+        userName = '';
+        individualAnswers = {};
+        teamAnswers = {};
+        teamFloraName = '';
+        allAppeals = [];
+
+        // Reset UI elements
+        document.getElementById('user-input-name').value = '';
+        document.getElementById('user-display-name').innerText = 'Visitante';
+        document.getElementById('team-input-name').value = ''; // Clear team name input
+        document.getElementById('team-flora-name').innerText = 'Nenhuma equipe definida'; // Reset team name display
+
+        // Clear radio button selections for iRAT
+        document.querySelectorAll('input[name="q1_irat"]').forEach(radio => radio.checked = false);
+        document.querySelectorAll('input[name="q2_irat"]').forEach(radio => radio.checked = false);
+        document.querySelectorAll('input[name="q3_irat"]').forEach(radio => radio.checked = false);
+        document.querySelectorAll('input[name="q4_irat"]').forEach(radio => radio.checked = false);
+
+        // Clear radio button selections for tRAT
+        document.querySelectorAll('input[name="q1_trat"]').forEach(radio => radio.checked = false);
+        document.querySelectorAll('input[name="q2_trat"]').forEach(radio => radio.checked = false);
+        document.querySelectorAll('input[name="q3_trat"]').forEach(radio => radio.checked = false);
+        document.querySelectorAll('input[name="q4_trat"]').forEach(radio => radio.checked = false);
+
+        // Clear appeal textarea
+        document.getElementById('appeal-text').value = '';
+
+        // Reset feedback messages
+        document.getElementById('irat-feedback').innerText = '';
+        document.getElementById('trat-feedback').innerText = '';
+        document.getElementById('appeal-feedback').innerText = '';
+
+        // Reset tRAT comparison values
+        document.getElementById('individual-q1-choice').innerText = 'Nenhuma';
+        document.getElementById('individual-q2-choice').innerText = 'Nenhuma';
+        document.getElementById('individual-q3-choice').innerText = 'Nenhuma';
+        document.getElementById('individual-q4-choice').innerText = 'Nenhuma';
+        document.getElementById('team-q1-choice').innerText = 'Nenhuma';
+        document.getElementById('team-q2-choice').innerText = 'Nenhuma';
+        document.getElementById('team-q3-choice').innerText = 'Nenhuma';
+        document.getElementById('team-q4-choice').innerText = 'Nenhuma';
+        document.getElementById('negotiation-summary').innerText = 'Submeta as respostas para ver a comparação de negociação.';
+
+        // Destroy existing chart instances
+        if (individualChartInstance) {
+            individualChartInstance.destroy();
+            individualChartInstance = null;
+        }
+        if (teamChartInstance) {
+            teamChartInstance.destroy();
+            teamChartInstance = null;
+        }
+
+        // Re-initialize state to update all display elements
+        initializeState();
+
+        alert('Todos os resultados e dados da sessão foram apagados!');
+    }
+
+    // Initial state: ensure feedback is clear and comparison summary is set
+    document.addEventListener('DOMContentLoaded', () => {
+        initializeState();
+    });
+</script>
+</body>
+</html>
